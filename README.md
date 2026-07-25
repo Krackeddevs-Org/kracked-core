@@ -47,7 +47,11 @@ It's plain markdown files. You can read them, edit them, commit them to git, and
 npx kracked-core init
 ```
 
-The wizard asks a few questions — name your agent, is this a new or existing project, which editor you use — and writes the files. Hold Enter through it and you'll get a sane setup.
+The wizard asks a few questions — name your agent, new or existing project, which editor you use —
+and writes the files. Pressing Enter through it gives you a working setup.
+
+**Existing codebase?** It scans your repo and drafts the memory from what it finds.
+**Starting fresh?** It asks what you're building and what stack, so your agent knows from day one.
 
 **Full support** (memory + all five commands):
 **Antigravity** · **Claude Code** · **Kilo Code** (VS Code) · **Roo Code** (VS Code)

@@ -53,6 +53,8 @@ It will ask:
 2. Your name
 3. Set up this project?
 4. New project or existing codebase?
+   - **Existing** — it scans your repo and drafts the memory
+   - **New** — it asks what you're building and what stack (both skippable)
 5. Which editor(s) you use — **spacebar to tick, Enter to confirm**
 
 Then it writes your files and tells you what it made.

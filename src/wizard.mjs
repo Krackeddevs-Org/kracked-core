@@ -196,6 +196,7 @@ async function wizardFlow() {
   let projectMode = null; // 'new' | 'existing'
   let stackLine = 'unknown — not auto-detected';
   let projectSummary = null;
+  let projectPitch = '';
 
   if (setUpProject) {
     const pathAnswer = await input('Project directory?', '.');
@@ -249,6 +250,24 @@ async function wizardFlow() {
       ],
       classification === 'existing' ? 0 : 1
     );
+
+    if (projectMode === 'new') {
+      // Nothing to scan, so ask instead — otherwise the agent boots knowing
+      // nothing about what's being built, which is the problem this package
+      // exists to solve. Both skippable with Enter.
+      stdout.write('\n  Two quick questions so your agent knows what it\'s working on.\n');
+      stdout.write(`  ${c_dim('Press Enter to skip either one.')}\n\n`);
+
+      projectPitch = sanitizeScanned(
+        await input('What are you building? (one line)', ''),
+        200
+      );
+      const statedStack = sanitizeScanned(
+        await input('What stack? (e.g. Next.js + Supabase)', ''),
+        80
+      );
+      if (statedStack) stackLine = statedStack;
+    }
 
     if (projectMode === 'existing') {
       if (!fs.existsSync(projectDir)) {
@@ -333,6 +352,9 @@ async function wizardFlow() {
     DATE: isoDate(),
     STACK: stackLine,
     RUN_COMMANDS: runCommandsBlock(projectSummary),
+    PITCH: projectPitch
+      ? projectPitch
+      : '_(Add a sentence or two here on what this project actually does.)_',
   };
 
   stdout.write('\nWriting files...\n');

@@ -11,7 +11,7 @@ here.
 - **Stack:** {{STACK}}
 - **Created:** {{DATE}}
 
-_(Add a sentence or two here on what this project actually does, once there's something to say.)_
+{{PITCH}}
 
 ## Conventions
 
