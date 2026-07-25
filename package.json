@@ -1,0 +1,30 @@
+{
+  "name": "kracked-core",
+  "version": "1.0.0",
+  "description": "Zero-dependency memory & workflow installer for AI coding agents — global identity, project memory, and skills that survive session restarts.",
+  "type": "module",
+  "bin": {
+    "kracked-core": "./bin/kracked-core.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Krackeddevs-Org/kracked-core.git"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "memory",
+    "cli",
+    "claude",
+    "antigravity"
+  ]
+}
