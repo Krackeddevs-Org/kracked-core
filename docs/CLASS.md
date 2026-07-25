@@ -190,8 +190,10 @@ It knows. That's the whole product.
 ## Cheat sheet
 
 ```
-npx kracked-core init      install
-npx kracked-core update    get the latest skills, keep your memory
+npx kracked-core init            install
+npx kracked-core status          check version + what's installed
+npx kracked-core update          get the latest skills, keep your memory
+npx kracked-core uninstall       remove it
 /kracked-boot             start of session   ← always first
 /kracked-sdd              build something
 /kracked-wrap             end of session     ← don't skip
@@ -219,6 +221,7 @@ npx kracked-core update    get the latest skills, keep your memory
 | Wrong info in memory | **Just edit the file.** It's markdown. Faster than arguing |
 | Want to remove it all | `npx kracked-core uninstall` — asks before deleting anything |
 | New version came out | `npx kracked-core@latest update` — keeps all your memory |
+| Not sure which version you have | `npx kracked-core@latest status` |
 
 ---
 

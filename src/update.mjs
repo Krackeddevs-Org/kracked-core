@@ -12,7 +12,7 @@ import { stdout } from 'node:process';
 import { createRequire } from 'node:module';
 
 import { select } from './prompt.mjs';
-import { writeLoaders, writeSkills, SKILL_NAMES } from './scaffold.mjs';
+import { writeLoaders, writeSkills, writeVersionStamp, SKILL_NAMES } from './scaffold.mjs';
 
 const require = createRequire(import.meta.url);
 const dim = (s) => `\x1b[2m${s}\x1b[0m`;
@@ -144,6 +144,7 @@ export async function runUpdate() {
   stdout.write('\nUpdating...\n');
   await writeLoaders({ projectDir, tokens, ask: overwrite, report, editors });
   await writeSkills({ projectDir, tokens, editors, ask: overwrite, report });
+  writeVersionStamp({ projectDir, version, report });
 
   stdout.write(`\n  Refreshed ${created.length} file(s).\n`);
   stdout.write('\nRestart your editor so it picks up the updated skills.\n');

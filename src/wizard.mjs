@@ -2,6 +2,7 @@
 // Follows the wizard flow in CONTRACT.md exactly — question order matters.
 
 import { stdin, stdout } from 'node:process';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -22,6 +23,7 @@ import {
   writeProjectMemory,
   writeLoaders,
   writeSkills,
+  writeVersionStamp,
 } from './scaffold.mjs';
 
 /** Expand a leading ~ to the home directory. Leaves other paths untouched. */
@@ -32,6 +34,15 @@ function expandTilde(inputPath) {
     return path.join(os.homedir(), inputPath.slice(2));
   }
   return inputPath;
+}
+
+/** The version of kracked-core doing the installing. */
+function pkgVersion() {
+  try {
+    return createRequire(import.meta.url)('../package.json').version;
+  } catch {
+    return 'unknown';
+  }
 }
 
 /** Format today's date as YYYY-MM-DD. */
@@ -341,6 +352,7 @@ async function wizardFlow() {
     await writeProjectMemory({ projectDir, tokens, ask: conflictAsk, report: reporter });
     await writeLoaders({ projectDir, tokens, ask: conflictAsk, report: reporter, editors });
     await writeSkills({ projectDir, tokens, editors, ask: conflictAsk, report: reporter });
+    writeVersionStamp({ projectDir, version: pkgVersion(), report: reporter });
   }
 
   printSummary(created, agentName, setUpProject);

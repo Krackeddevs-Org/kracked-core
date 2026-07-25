@@ -174,6 +174,27 @@ export async function writeProjectMemory({ projectDir, tokens, ask, report }) {
   }
 }
 
+/**
+ * Record which version wrote these files. Without this there is no way to
+ * answer "am I on the latest?" — you can see what npm serves, but not what
+ * you actually installed.
+ */
+export function writeVersionStamp({ projectDir, version, report }) {
+  const dest = path.join(projectDir, '.kracked', '.version');
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, `${version}\n`, 'utf8');
+  report({ path: dest, action: 'written' });
+}
+
+/** Read the version that last wrote this project's files, or null. */
+export function readVersionStamp(projectDir) {
+  try {
+    return fs.readFileSync(path.join(projectDir, '.kracked', '.version'), 'utf8').trim();
+  } catch {
+    return null; // pre-1.5.0 install, or not installed
+  }
+}
+
 /** Write AGENTS.md, CLAUDE.md (shim), and .agents/rules/kracked.md. */
 export async function writeLoaders({ projectDir, tokens, ask, report, editors }) {
   const agentsContent = applyTokens(readTemplate('loaders/AGENTS.md'), tokens);

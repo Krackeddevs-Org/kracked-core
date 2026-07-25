@@ -3,12 +3,14 @@
 import { runInit } from '../src/wizard.mjs';
 import { runUninstall } from '../src/uninstall.mjs';
 import { runUpdate } from '../src/update.mjs';
+import { runStatus } from '../src/status.mjs';
 import { beginTypeAhead } from '../src/prompt.mjs';
 
 const USAGE = `kracked-core — memory & workflow installer for AI coding agents
 
 Usage:
   npx kracked-core init        Set up global + project memory
+  npx kracked-core status      Show what's installed and whether it's current
   npx kracked-core update      Refresh skills + loaders, keeping your memory
   npx kracked-core uninstall   Remove kracked-core files (asks before deleting)
 
@@ -26,6 +28,11 @@ async function main() {
 
   if (subcommand === 'init') {
     await runInit();
+    return;
+  }
+
+  if (subcommand === 'status') {
+    await runStatus();
     return;
   }
 

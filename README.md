@@ -134,6 +134,42 @@ Then it tracks the work:
 
 **A story cannot move to `done` without evidence.** Not "the tests pass" — what did you actually verify, and what did you *not*? Green tests are not a working feature. This one rule catches more bugs than any other part of the system.
 
+## Terminal commands
+
+```bash
+npx kracked-core init        # set up memory in this project
+npx kracked-core status      # what's installed, and is it current?
+npx kracked-core update      # refresh skills + loaders, keep your memory
+npx kracked-core uninstall   # remove it (asks before deleting anything)
+```
+
+## Am I on the latest version?
+
+```bash
+npx kracked-core@latest status
+```
+
+Shows the version that installed your files, the latest on npm, and tells you plainly whether
+you need to update:
+
+```
+This project ~/code/my-app
+  installed version: 1.4.0
+  .agents/skills: 5/5 skills
+
+Global memory ~/.kracked
+  4/4 files present
+  lessons learned: 12
+
+Version
+  running now:   1.5.0
+  latest on npm: 1.5.0
+
+  Up to date.
+```
+
+> The `@latest` matters — plain `npx kracked-core` can serve a cached older copy.
+
 ## Updating
 
 When a new version ships:
