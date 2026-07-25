@@ -4,13 +4,7 @@ Registry of every project {{USER_NAME}} is working on. Each row points to the pr
 `.kracked/` folder, where the real detail (stack, conventions, session state) lives. This file
 only tracks what exists and where — never project-specific truth.
 
-## Format
-
-```
-| Project | Path | Stack | Status |
-```
-
-- **Status** is one of: `active`, `paused`, `done`.
+**Status** is one of: `active`, `paused`, `done`.
 
 ## Registry
 

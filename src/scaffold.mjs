@@ -80,6 +80,19 @@ async function writeFileWithConflictCheck(destPath, content, ask, report) {
  * 'skip' | 'overwrite' | 'alongside'.
  * `report(entry)` is called once per file, for the wizard's final summary.
  */
+/**
+ * Drop the illustrative example entries from a freshly-written memory file.
+ * They exist to show the format, but left in place they sit alongside the
+ * user's real lessons forever and make the index untrustworthy.
+ */
+function stripExamples(content) {
+  return content
+    .split('\n')
+    .filter((line) => !/^[-|]\s*\[?(YYYY-MM-DD|\d{4}-\d{2}-\d{2})\]?\s*(todo-app|my-blog|<project>)/.test(line))
+    .filter((line) => !/^\|\s*(todo-app|my-blog)\s*\|/.test(line))
+    .join('\n');
+}
+
 export async function writeGlobalMemory({ tokens, ask, report }) {
   const globalDir = path.join(os.homedir(), '.kracked');
   // projects.md is excluded here — it's a running registry appended to by
@@ -88,7 +101,7 @@ export async function writeGlobalMemory({ tokens, ask, report }) {
 
   for (const file of files) {
     const destPath = path.join(globalDir, file);
-    const content = applyTokens(readTemplate(`global/${file}`), tokens);
+    const content = stripExamples(applyTokens(readTemplate(`global/${file}`), tokens));
     await writeFileWithConflictCheck(destPath, content, ask, report);
   }
 }
@@ -124,10 +137,13 @@ export function registerProject({ tokens }) {
   const lines = content.split('\n');
   const isDivider = (l) => /^\|[\s|:-]+\|?\s*$/.test(l);
 
-  // Find the table's divider row (|---|---|), then insert after the last data
-  // row that follows it. Anchoring on the divider matters: without it, a table
-  // whose only row is the header inserts ABOVE the divider and breaks the table.
-  const dividerIdx = lines.findIndex(isDivider);
+  // Anchor on the Registry heading first — a table-looking line elsewhere in the
+  // doc (an example, a fenced snippet) would otherwise capture the insert and
+  // produce a second, malformed table.
+  const registryIdx = lines.findIndex((l) => /^##\s+Registry\s*$/i.test(l));
+  const searchFrom = registryIdx >= 0 ? registryIdx : 0;
+  const rel = lines.slice(searchFrom).findIndex(isDivider);
+  const dividerIdx = rel >= 0 ? searchFrom + rel : -1;
 
   if (dividerIdx >= 0) {
     let insertAt = dividerIdx;
