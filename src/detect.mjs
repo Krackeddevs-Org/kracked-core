@@ -16,6 +16,39 @@ export function globalMemoryDir() {
 }
 
 /**
+ * Find agent setups already governing this directory, so we never silently
+ * overwrite someone's existing system. A CLAUDE.md/AGENTS.md that kracked-core
+ * didn't write is another system's loader — installing over it would replace
+ * that agent's identity, which is exactly the failure this check prevents.
+ *
+ * Returns [{ file, path, scope, ours }] — `ours` marks files kracked-core
+ * itself wrote (safe to refresh), everything else is someone else's.
+ */
+export function detectExistingAgentSetup(projectDir) {
+  const found = [];
+
+  const inspect = (filePath, label, scope) => {
+    if (!fs.existsSync(filePath)) return;
+    let body = '';
+    try {
+      body = fs.readFileSync(filePath, 'utf8');
+    } catch {
+      return; // unreadable is not our problem to solve here
+    }
+    // Our own loaders always reference kracked-core by name.
+    const ours = /kracked-core|kracked\.md|\.kracked\//.test(body);
+    found.push({ file: label, path: filePath, scope, ours });
+  };
+
+  inspect(path.join(projectDir, 'CLAUDE.md'), 'CLAUDE.md', 'project');
+  inspect(path.join(projectDir, 'AGENTS.md'), 'AGENTS.md', 'project');
+  inspect(path.join(projectDir, '.agents', 'rules', 'kracked.md'), '.agents/rules/kracked.md', 'project');
+  inspect(path.join(os.homedir(), '.claude', 'CLAUDE.md'), '~/.claude/CLAUDE.md', 'global');
+
+  return found;
+}
+
+/**
  * Is the target dir an existing codebase, empty, or new (doesn't exist yet)?
  * Returns one of: "new" (doesn't exist), "empty" (exists, no entries),
  * "existing" (exists, has files/dirs signalling a real codebase).

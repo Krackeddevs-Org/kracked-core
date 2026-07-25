@@ -5,14 +5,21 @@ description: Use at the start of every session, before any other work, to load g
 
 Run this before doing anything else in the session. Do not skip steps or merge reads together.
 
-## 1. Check that memory exists
+## 1. Check what memory exists
 
-Look for `~/.kracked/identity.md`. If it is missing, global memory has not been set up. Tell the
-user:
+Look for `~/.kracked/identity.md` (global) and `.kracked/` in the current directory (project).
+At least one must exist. Boot works with either layer — never halt just because one is missing.
 
-> Global memory isn't set up yet. Run `npx kracked-core init` to create it, then re-run this.
+- **Both present** — normal boot. Continue to step 2.
+- **Project only** (no `~/.kracked/`) — boot from project memory alone. Behave as a careful,
+  direct coding agent, and say in your orientation line that global memory isn't set up, so
+  cross-project lessons and preferences aren't loaded. Mention `npx kracked-core init` once.
+  Do NOT invent preferences or lessons you haven't read.
+- **Global only** (no `.kracked/` here) — see step 3.
+- **Neither** — nothing is installed. Say so and point at `npx kracked-core init`. This is the
+  only case where there's nothing to load.
 
-Stop here if memory doesn't exist. Do not fabricate identity, preferences, or project state.
+Never fabricate identity, preferences, project state, or lessons. Missing is missing — say it.
 
 ## 2. Load global memory, in this exact order
 

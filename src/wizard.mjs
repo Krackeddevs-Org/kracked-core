@@ -1,7 +1,6 @@
 // Interactive prompt flow for `npx kracked-core init`.
 // Follows the wizard flow in CONTRACT.md exactly — question order matters.
 
-import readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,7 +12,9 @@ import {
   classifyProjectDir,
   scanExistingProject,
   stackSummaryLine,
+  detectExistingAgentSetup,
 } from './detect.mjs';
+import { select, checkbox, confirm, input } from './prompt.mjs';
 import {
   writeGlobalMemory,
   registerProject,
@@ -68,87 +69,91 @@ export async function runInit() {
     return;
   }
 
-  const rl = readline.createInterface({ input: stdin, output: stdout });
-
-  let interrupted = false;
+  // Ctrl+C / Ctrl+D are handled inside prompt.mjs, which owns stdin in raw
+  // mode. Keep a SIGINT guard for interrupts arriving between prompts.
   const onSigint = () => {
-    interrupted = true;
     stdout.write('\n\nCancelled. Nothing after this point was written.\n');
-    rl.close();
     process.exit(130);
   };
   process.on('SIGINT', onSigint);
 
   try {
-    await wizardFlow(rl);
-  } catch (err) {
-    // Ctrl+D (EOF) mid-question surfaces as readline's AbortError. Treat it
-    // the same as Ctrl+C — a clean cancel, not a crash with a scary stack.
-    if (err.code === 'ABORT_ERR' || /ctrl\+d/i.test(err.message || '')) {
-      stdout.write('\n\nCancelled. Nothing after this point was written.\n');
-      process.exitCode = 130;
-      return;
-    }
-    throw err;
+    await wizardFlow();
   } finally {
     process.off('SIGINT', onSigint);
-    if (!interrupted) rl.close();
+    stdin.pause();
   }
 }
 
-/** Ask a question with a default; Enter alone accepts the default. */
-async function ask(rl, question, defaultValue) {
-  const suffix = defaultValue ? ` [${defaultValue}]` : '';
-  const answer = (await rl.question(`${question}${suffix} `)).trim();
-  return answer === '' ? defaultValue : answer;
-}
-
-/** Ask a yes/no question. Returns boolean. Default shown as Y/n or y/N. */
-async function askYesNo(rl, question, defaultYes) {
-  const suffix = defaultYes ? '[Y/n]' : '[y/N]';
-  const answer = (await rl.question(`${question} ${suffix} `)).trim().toLowerCase();
-  if (answer === '') return defaultYes;
-  return answer === 'y' || answer === 'yes';
-}
-
 /** Prompt for how to resolve a file-already-exists conflict. */
-async function askConflict(rl, destPath) {
+async function askConflict(destPath) {
   stdout.write(`\n  Already exists: ${destPath}\n`);
-  const answer = (
-    await rl.question('  skip / overwrite / write alongside as .kracked-new? [skip] ')
-  ).trim().toLowerCase();
-
-  if (answer === 'o' || answer === 'overwrite') return 'overwrite';
-  if (answer === 'a' || answer === 'alongside' || answer === 'write alongside') return 'alongside';
-  return 'skip';
+  return select(
+    '  What should we do?',
+    [
+      { label: 'Skip', value: 'skip', hint: 'keep the existing file' },
+      { label: 'Overwrite', value: 'overwrite', hint: 'replace it' },
+      { label: 'Write alongside', value: 'alongside', hint: 'save as .kracked-new' },
+    ],
+    0
+  );
 }
 
-async function wizardFlow(rl) {
+/**
+ * Warn before writing into a directory another agent system already governs.
+ * A CLAUDE.md we didn't write belongs to someone else's setup — overwriting it
+ * silently replaces that agent's identity. Ask first, every time.
+ */
+async function warnOnExistingSetup(projectDir) {
+  const found = detectExistingAgentSetup(projectDir).filter((f) => !f.ours);
+  if (found.length === 0) return true;
+
+  stdout.write('\n  Heads up — this looks like it already has an agent setup:\n');
+  for (const f of found) {
+    const where = f.scope === 'global' ? 'global' : 'this project';
+    stdout.write(`    • ${f.file}  ${c_dim(`(${where})`)}\n`);
+  }
+  stdout.write(
+    '\n  Installing here would overwrite those loaders and change who your\n' +
+    '  agent is in this directory. Existing files are never replaced without\n' +
+    '  asking, but it is easy to end up with two systems giving different\n' +
+    '  instructions.\n\n'
+  );
+
+  return confirm('Continue installing here?', false);
+}
+
+/** Minimal dim helper for wizard-level notices. */
+function c_dim(s) {
+  return `[2m${s}[0m`;
+}
+
+async function wizardFlow() {
   const created = [];
   const reporter = (entry) => created.push(entry);
-  const conflictAsk = (destPath) => askConflict(rl, destPath);
+  const conflictAsk = (destPath) => askConflict(destPath);
 
   stdout.write('kracked-core — set up memory for your AI coding agent\n\n');
 
   // 1. Agent name
-  const agentName = (await ask(rl, 'What should we call your agent?', 'KC')) || 'KC';
+  const agentName = (await input('What should we call your agent?', 'KC')) || 'KC';
 
   // 2. User name
   const systemUser = os.userInfo().username || 'you';
-  const userName = (await ask(rl, 'Your name?', systemUser)) || systemUser;
+  const userName = (await input('Your name?', systemUser)) || systemUser;
 
-  // 3. Global memory
+  // 3. Global memory — always installed. It holds identity, preferences and
+  // cross-project lessons, and boot depends on it; making it optional only
+  // created a way to end up with a half-installed system that can't boot.
+  // Existing files are still never overwritten without asking.
   const hasGlobal = globalMemoryExists();
-  let setUpGlobal;
-  if (!hasGlobal) {
-    setUpGlobal = await askYesNo(rl, 'Set up global memory now?', true);
-  } else {
-    const reuse = await askYesNo(rl, 'Global memory found. Reuse it?', true);
-    setUpGlobal = !reuse; // if not reusing, we still (re)write it below
+  const setUpGlobal = true;
+  if (hasGlobal) {
+    stdout.write(`\n  Global memory found at ${globalMemoryDir()} — reusing it.\n`);
   }
 
   // 4. Project setup
-  const setUpProject = await askYesNo(rl, 'Set up this project?', true);
+  const setUpProject = await confirm('Set up this project?', true);
 
   let projectDir = process.cwd();
   let projectMode = null; // 'new' | 'existing'
@@ -156,23 +161,28 @@ async function wizardFlow(rl) {
   let projectSummary = null;
 
   if (setUpProject) {
-    const pathAnswer = await ask(rl, 'Project directory?', '.');
+    const pathAnswer = await input('Project directory?', '.');
     const expanded = expandTilde(pathAnswer);
     projectDir = path.resolve(expanded === '' ? '.' : expanded);
 
-    const classification = classifyProjectDir(projectDir);
-
-    if (classification === 'existing') {
-      const modeAnswer = (
-        await ask(rl, 'New project or existing codebase? (new/existing)', 'existing')
-      ).toLowerCase();
-      projectMode = modeAnswer.startsWith('n') ? 'new' : 'existing';
-    } else {
-      const modeAnswer = (
-        await ask(rl, 'New project or existing codebase? (new/existing)', 'new')
-      ).toLowerCase();
-      projectMode = modeAnswer.startsWith('e') ? 'existing' : 'new';
+    // Another agent system already here? Ask before touching its loaders.
+    if (fs.existsSync(projectDir)) {
+      const proceed = await warnOnExistingSetup(projectDir);
+      if (!proceed) {
+        stdout.write('\nStopped — nothing was written to this project.\n');
+        return;
+      }
     }
+
+    const classification = classifyProjectDir(projectDir);
+    projectMode = await select(
+      'Is this a new project or an existing codebase?',
+      [
+        { label: 'Existing codebase', value: 'existing', hint: 'scan it and draft the memory' },
+        { label: 'New project', value: 'new', hint: 'start with a blank scaffold' },
+      ],
+      classification === 'existing' ? 0 : 1
+    );
 
     if (projectMode === 'existing') {
       if (!fs.existsSync(projectDir)) {
@@ -192,9 +202,9 @@ async function wizardFlow(rl) {
         }
         stdout.write('\n');
 
-        const confirmed = await askYesNo(rl, 'Does this look right?', true);
+        const confirmed = await confirm('Does this look right?', true);
         if (!confirmed) {
-          const manualStack = await ask(rl, 'Describe the stack yourself:', stackLine);
+          const manualStack = await input('Describe the stack yourself:', stackLine);
           stackLine = manualStack;
         }
       }
@@ -208,23 +218,25 @@ async function wizardFlow(rl) {
     }
   }
 
-  // 5. Editors
-  const editorAnswer = (
-    await ask(rl, 'Which editor(s) do you use? (antigravity/claude/both/other)', 'both')
-  ).toLowerCase();
+  // 5. Editors — a checkbox, so anyone already running another agent system in
+  // one harness can install for the other and leave that one alone.
+  const existing = setUpProject ? detectExistingAgentSetup(projectDir) : [];
+  const claudeTaken = existing.some((f) => f.file === 'CLAUDE.md' && !f.ours);
 
-  let editors;
-  if (editorAnswer.startsWith('both')) {
-    editors = ['antigravity', 'claude'];
-  } else if (editorAnswer.startsWith('a')) {
-    editors = ['antigravity'];
-  } else if (editorAnswer.startsWith('c')) {
-    editors = ['claude'];
-  } else {
-    // "other" or anything unrecognized — still write both loader formats,
-    // since AGENTS.md/CLAUDE.md are cheap and cover most tools either way.
-    editors = ['antigravity', 'claude'];
-  }
+  const editors = await checkbox('Which editor(s) do you use?', [
+    {
+      label: 'Antigravity',
+      value: 'antigravity',
+      checked: true,
+      hint: 'writes .agents/',
+    },
+    {
+      label: 'Claude Code',
+      value: 'claude',
+      checked: !claudeTaken,
+      hint: claudeTaken ? 'CLAUDE.md already in use here' : 'writes CLAUDE.md + .claude/',
+    },
+  ]);
 
   // 6. Write files
   const projectName = projectSummary?.name || (setUpProject ? path.basename(projectDir) : 'unnamed-project');
