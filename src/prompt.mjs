@@ -110,6 +110,26 @@ export function beginTypeAhead() {
   stdin.on('data', bufferEarlyKeys);
 }
 
+/**
+ * Release stdin so the process can exit.
+ *
+ * An open stdin listener keeps Node's event loop alive indefinitely, so any
+ * command that finishes WITHOUT going through a prompt's cleanup (an early
+ * return, an error path, a completed run) leaves the terminal hanging with no
+ * output and no prompt back. `process.exitCode` sets the code but does not
+ * exit. Every command path must end here.
+ */
+export function endTypeAhead() {
+  if (!stdin.isTTY) return;
+  stdin.removeListener('data', bufferEarlyKeys);
+  try {
+    if (stdin.isRaw) stdin.setRawMode(false);
+  } catch {
+    // Terminal already gone.
+  }
+  stdin.pause();
+}
+
 function bufferEarlyKeys(chunk) {
   pendingKeys.push(...splitKeys(chunk));
 }

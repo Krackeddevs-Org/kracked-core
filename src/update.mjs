@@ -87,10 +87,18 @@ export async function runUpdate() {
   stdout.write(`${bold('kracked-core update')} ${dim(`v${version}`)}\n\n`);
 
   if (!fs.existsSync(path.join(projectDir, '.kracked'))) {
-    stdout.write(
-      `No kracked-core install found in ${projectDir}\n\n` +
-      'Run `npx kracked-core init` to set it up first.\n'
-    );
+    stdout.write(`No kracked-core install found in ${projectDir}\n\n`);
+
+    // Easy mistake: running this inside the package source rather than a
+    // project that uses it. Say so instead of just repeating the error.
+    if (fs.existsSync(path.join(projectDir, 'templates', 'loaders', 'AGENTS.md'))) {
+      stdout.write(
+        'This looks like the kracked-core package source, not a project that\n' +
+        'uses it. cd into your own project first, then run this again.\n'
+      );
+    } else {
+      stdout.write('Run `npx kracked-core@latest init` to set it up first.\n');
+    }
     process.exitCode = 1;
     return;
   }

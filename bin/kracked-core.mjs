@@ -4,7 +4,7 @@ import { runInit } from '../src/wizard.mjs';
 import { runUninstall } from '../src/uninstall.mjs';
 import { runUpdate } from '../src/update.mjs';
 import { runStatus } from '../src/status.mjs';
-import { beginTypeAhead } from '../src/prompt.mjs';
+import { beginTypeAhead, endTypeAhead } from '../src/prompt.mjs';
 
 const USAGE = `kracked-core — memory & workflow installer for AI coding agents
 
@@ -63,7 +63,16 @@ async function main() {
   process.exit(1);
 }
 
-main().catch((err) => {
-  process.stderr.write(`\nkracked-core failed: ${err.message}\n`);
-  process.exit(1);
-});
+main()
+  .catch((err) => {
+    process.stderr.write(`\nkracked-core failed: ${err.message}\n`);
+    process.exitCode = 1;
+  })
+  // A raw-mode TTY stdin stays an ACTIVE HANDLE even after removeListener +
+  // pause(), so Node's event loop never drains and the terminal never returns —
+  // the command looks stuck even when it succeeded. Releasing stdin is not
+  // enough on its own; exit explicitly once the work is done.
+  .finally(() => {
+    endTypeAhead();
+    process.stdout.write('', () => process.exit(process.exitCode ?? 0));
+  });
