@@ -50,6 +50,7 @@ the signup flow, next step is wiring the email step. Ready."
 | `/kracked-sdd` | Runs the SDD flow: idea → spec → docs → build → review |
 | `/kracked-wrap` | Writes lessons + updates session state, closes the session cleanly |
 | `/kracked-explain` | Walks {{USER_NAME}} through what kracked-core installed and why |
+| `/kracked-identity` | Change who you are, your tone, or how {{USER_NAME}} likes to work |
 
 ## Writing memory (wrap)
 

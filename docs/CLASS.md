@@ -43,14 +43,15 @@ In your project folder:
 npx kracked-core init
 ```
 
-Answer the questions. **You can hold Enter through all of them** and get a working setup.
+Answer the questions — **arrow keys to move, Enter to pick, spacebar to tick boxes.**
+You can hold Enter through all of them and get a working setup.
 
 It will ask:
 1. What to call your agent
 2. Your name
-3. Set up global memory? *(yes — first time only)*
+3. Set up this project?
 4. New project or existing codebase?
-5. Which editor do you use?
+5. Which editor(s) you use — **spacebar to tick, Enter to confirm**
 
 Then it writes your files and tells you what it made.
 
@@ -97,7 +98,7 @@ Lives in the repo. **This project only.**
 
 ---
 
-## Part 4 — The three commands (10 min)
+## Part 4 — The three daily commands (10 min)
 
 ### `/kracked-boot` — start of session
 
@@ -131,6 +132,29 @@ It keeps a tracker:
 The agent writes down what it learned before you close the chat.
 
 > **Don't skip this.** Boot without wrap = a memory system that just forgets more slowly. The wrap is where memory gets *written*.
+
+---
+
+## Part 4b — Make it yours (5 min)
+
+Your agent shipped with a generic personality. Change it.
+
+```
+/kracked-identity
+```
+
+Tell it what's annoying — too wordy, too formal, keeps suggesting the wrong library. It edits
+the right file for you.
+
+**Two files, two purposes — don't mix them up:**
+
+| File | Holds | Example |
+|---|---|---|
+| `~/.kracked/identity.md` | Who your AGENT is | its name, its tone |
+| `~/.kracked/preferences.md` | How YOU work | "I use Tailwind, never CSS modules" |
+
+> These are just markdown files in your home folder. You can open and edit them directly —
+> often faster than asking. Changes load at your next `/kracked-boot`.
 
 ---
 
@@ -168,6 +192,7 @@ npx kracked-core init     install
 /kracked-sdd              build something
 /kracked-wrap             end of session     ← don't skip
 /kracked-explain          "what is all this?"
+/kracked-identity         change your agent's name/tone/preferences
 ```
 
 **Memory locations**

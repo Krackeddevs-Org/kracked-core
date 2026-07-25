@@ -9,7 +9,13 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_ROOT = path.join(__dirname, '..', 'templates');
 
-const SKILL_NAMES = ['kracked-boot', 'kracked-sdd', 'kracked-wrap', 'kracked-explain'];
+const SKILL_NAMES = [
+  'kracked-boot',
+  'kracked-sdd',
+  'kracked-wrap',
+  'kracked-explain',
+  'kracked-identity',
+];
 
 /** Read a template file, throwing a clear error if Track A hasn't shipped it yet. */
 function readTemplate(relPath) {
@@ -173,7 +179,7 @@ export async function writeLoaders({ projectDir, tokens, ask, report }) {
 }
 
 /**
- * Write the 4 skills to BOTH .claude/skills/<name>/SKILL.md and
+ * Write every skill to BOTH .claude/skills/<name>/SKILL.md and
  * .agents/skills/<name>/SKILL.md — but only for the harnesses selected.
  * `editors` is an array that may contain 'antigravity' and/or 'claude'.
  */

@@ -53,12 +53,15 @@ The wizard asks a few questions — name your agent, is this a new or existing p
 
 ## Use
 
-Three commands. That's the whole thing.
+Five commands. Three of them are the whole daily loop.
 
 ```
 /kracked-boot    Start of session — agent loads its memory and tells you where you left off
 /kracked-sdd     Build something — idea → spec → docs → build → review
 /kracked-wrap    End of session — agent writes down what it learned
+
+/kracked-identity  Change your agent's name, tone, or how you like to work
+/kracked-explain   "What is all this?" — walks you through what got installed
 ```
 
 > **`/kracked-wrap` is not optional.** Boot without wrap is a memory system that just forgets more slowly. The wrap is where memory actually gets written.
