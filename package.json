@@ -1,6 +1,6 @@
 {
   "name": "kracked-core",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Zero-dependency memory & workflow installer for AI coding agents — global identity, project memory, and skills that survive session restarts.",
   "type": "module",
   "bin": {

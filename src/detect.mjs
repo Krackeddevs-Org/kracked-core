@@ -5,6 +5,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
+/**
+ * Scrub a value read from an untrusted repo before it can reach a template.
+ *
+ * Everything scanned from a project (package.json name, script names) gets
+ * interpolated into AGENTS.md and ~/.kracked/projects.md — files an AI agent
+ * READS AS INSTRUCTIONS on every boot. A crafted `name` containing newlines and
+ * a markdown heading can therefore inject text that reads as package-authored
+ * instruction, and via the global registry it persists into every OTHER project
+ * the user opens. Sanitize here, at the boundary, so no caller can forget.
+ */
+export function sanitizeScanned(value, maxLength = 64) {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/[\r\n\t]+/g, ' ')          // no line breaks — kills injected blocks
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]/g, '') // strip remaining control chars
+    .replace(/[|`<>]/g, '')              // markdown table + code + html structure
+    .replace(/^[\s#>*\-=+]+/, '')        // no leading heading/quote/list markers
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength)
+    .trim();
+}
+
 /** Does ~/.kracked/ already exist? */
 export function globalMemoryExists() {
   const dir = path.join(os.homedir(), '.kracked');
@@ -99,9 +123,17 @@ export function scanExistingProject(targetDir) {
   if (fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      if (pkg.name) summary.name = pkg.name;
+
+      // Everything below comes from an untrusted repo and ends up inside files
+      // the agent reads as instructions — sanitize before it goes anywhere.
+      const cleanName = sanitizeScanned(pkg.name);
+      if (cleanName) summary.name = cleanName;
+
       if (pkg.scripts && typeof pkg.scripts === 'object') {
-        summary.scripts = pkg.scripts;
+        // Keep only plausible script names; a hostile key is dropped, not rendered.
+        for (const key of Object.keys(pkg.scripts)) {
+          if (/^[a-zA-Z0-9:_-]{1,40}$/.test(key)) summary.scripts[key] = true;
+        }
       }
       const deps = { ...pkg.dependencies, ...pkg.devDependencies };
       const frameworkHints = [
@@ -127,13 +159,3 @@ export function stackSummaryLine(summary) {
   return parts.length ? parts.join(' ') : 'unknown — not auto-detected';
 }
 
-/** Which harnesses already have a footprint in this project dir? */
-export function detectHarnesses(targetDir) {
-  return {
-    claudeCode: fs.existsSync(path.join(targetDir, '.claude')) ||
-      fs.existsSync(path.join(targetDir, 'CLAUDE.md')),
-    antigravity: fs.existsSync(path.join(targetDir, '.agents')) ||
-      fs.existsSync(path.join(targetDir, 'AGENTS.md')),
-    cursor: fs.existsSync(path.join(targetDir, '.cursor')),
-  };
-}

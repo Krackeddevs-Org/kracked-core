@@ -9,7 +9,12 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_ROOT = path.join(__dirname, '..', 'templates');
 
-const SKILL_NAMES = [
+// Written into every loader kracked-core generates. `uninstall` requires this
+// exact string before deleting a shared-name file (AGENTS.md / CLAUDE.md), so
+// another tool's loader is never removed. Never change it without a migration.
+export const OWNED_MARKER = '<!-- kracked-core:owned -->';
+
+export const SKILL_NAMES = [
   'kracked-boot',
   'kracked-sdd',
   'kracked-wrap',
@@ -95,8 +100,10 @@ export async function writeGlobalMemory({ tokens, ask, report }) {
 export function registerProject({ tokens }) {
   const globalDir = path.join(os.homedir(), '.kracked');
   const projectsPath = path.join(globalDir, 'projects.md');
+  // Escape pipes — a path or name containing `|` would add phantom columns.
+  const cell = (v) => String(v ?? '').replace(/\|/g, '\\|');
   const stack = tokens.STACK && tokens.STACK.trim() ? tokens.STACK : '—';
-  const row = `| ${tokens.PROJECT_NAME} | ${tokens.PROJECT_PATH} | ${stack} | active |`;
+  const row = `| ${cell(tokens.PROJECT_NAME)} | ${cell(tokens.PROJECT_PATH)} | ${cell(stack)} | active |`;
 
   fs.mkdirSync(globalDir, { recursive: true });
 
@@ -168,20 +175,24 @@ export async function writeProjectMemory({ projectDir, tokens, ask, report }) {
 }
 
 /** Write AGENTS.md, CLAUDE.md (shim), and .agents/rules/kracked.md. */
-export async function writeLoaders({ projectDir, tokens, ask, report }) {
+export async function writeLoaders({ projectDir, tokens, ask, report, editors }) {
   const agentsContent = applyTokens(readTemplate('loaders/AGENTS.md'), tokens);
   await writeFileWithConflictCheck(path.join(projectDir, 'AGENTS.md'), agentsContent, ask, report);
 
   const claudeContent = applyTokens(readTemplate('loaders/CLAUDE.md'), tokens);
   await writeFileWithConflictCheck(path.join(projectDir, 'CLAUDE.md'), claudeContent, ask, report);
 
-  const krackedRulesContent = applyTokens(readTemplate('loaders/antigravity-rules.md'), tokens);
-  await writeFileWithConflictCheck(
-    path.join(projectDir, '.agents', 'rules', 'kracked.md'),
-    krackedRulesContent,
-    ask,
-    report
-  );
+  // Only write the Antigravity pointer when Antigravity is actually in use —
+  // `update` was creating .agents/ in Claude-only projects.
+  if (!editors || editors.includes('antigravity')) {
+    const krackedRulesContent = applyTokens(readTemplate('loaders/antigravity-rules.md'), tokens);
+    await writeFileWithConflictCheck(
+      path.join(projectDir, '.agents', 'rules', 'kracked.md'),
+      krackedRulesContent,
+      ask,
+      report
+    );
+  }
 }
 
 /**

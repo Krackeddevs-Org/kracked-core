@@ -7,7 +7,9 @@
 ## Before we start
 
 You need:
-- An editor with an AI agent — **Antigravity**, Claude Code, Cursor, or Windsurf
+- An editor with an AI agent — **Antigravity** or **Claude Code**
+  *(Cursor and Windsurf load the memory but don't get the `/kracked-*` commands — bring one of
+  the two above if you can.)*
 - **Node 18+** — check with `node --version`
 - A project folder (new or existing, both work)
 
@@ -44,7 +46,7 @@ npx kracked-core init
 ```
 
 Answer the questions — **arrow keys to move, Enter to pick, spacebar to tick boxes.**
-You can hold Enter through all of them and get a working setup.
+Pressing Enter on every question accepts the defaults and gives you a working setup.
 
 It will ask:
 1. What to call your agent
@@ -188,7 +190,8 @@ It knows. That's the whole product.
 ## Cheat sheet
 
 ```
-npx kracked-core init     install
+npx kracked-core init      install
+npx kracked-core update    get the latest skills, keep your memory
 /kracked-boot             start of session   ← always first
 /kracked-sdd              build something
 /kracked-wrap             end of session     ← don't skip
@@ -209,12 +212,13 @@ npx kracked-core init     install
 | Problem | Fix |
 |---|---|
 | `/kracked-boot` does nothing | Restart your editor — skills load at startup |
-| "Command not found" | Did `npx kracked-core init` finish? Re-run it |
+| "Command not found" | Restart your editor first. Still missing? Run `npx kracked-core@latest update` |
 | Agent ignores its memory | Check `AGENTS.md` exists in your project root |
 | Claude Code doesn't see it | Check `CLAUDE.md` exists — it should contain `@AGENTS.md` |
 | Agent forgot everything | Did you run `/kracked-wrap` last session? |
 | Wrong info in memory | **Just edit the file.** It's markdown. Faster than arguing |
 | Want to remove it all | `npx kracked-core uninstall` — asks before deleting anything |
+| New version came out | `npx kracked-core@latest update` — keeps all your memory |
 
 ---
 

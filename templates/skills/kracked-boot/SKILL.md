@@ -43,6 +43,7 @@ If the current directory has a `.kracked/` folder, read:
 1. `.kracked/project.md` — what this project is (stack, conventions)
 2. `.kracked/session.md` — working memory: state + next steps
 3. `.kracked/decisions.md` — why things are the way they are
+4. `.kracked/sdd/tracker.md` — story status, if this project uses SDD (skip if absent)
 
 If there is no `.kracked/` folder here, this is a project that hasn't been set up yet. Say so
 plainly and suggest `npx kracked-core init` if the user wants project memory for it. Continue

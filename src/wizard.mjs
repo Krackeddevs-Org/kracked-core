@@ -13,6 +13,7 @@ import {
   scanExistingProject,
   stackSummaryLine,
   detectExistingAgentSetup,
+  sanitizeScanned,
 } from './detect.mjs';
 import { select, checkbox, confirm, input } from './prompt.mjs';
 import {
@@ -36,6 +37,31 @@ function expandTilde(inputPath) {
 /** Format today's date as YYYY-MM-DD. */
 function isoDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Installing into these scatters loader files across the filesystem, and
+// installing into the home dir makes `<project>/.kracked` collide with global
+// memory. A typo like `/` should not silently create a tree.
+const FORBIDDEN_DIRS = ['/', '/etc', '/usr', '/bin', '/sbin', '/var', '/System', '/Library'];
+
+/**
+ * Refuse obviously wrong install targets before anything is written.
+ * Returns an error string, or null when the path is fine.
+ */
+function rejectUnsafeProjectDir(dir) {
+  const resolved = path.resolve(dir);
+
+  if (FORBIDDEN_DIRS.includes(resolved)) {
+    return `${resolved} is a system directory — pick a project folder instead.`;
+  }
+  if (resolved === path.resolve(os.homedir())) {
+    return (
+      'That\'s your home directory. Installing here would put loader files loose in\n' +
+      '  your home folder and collide with global memory at ~/.kracked.\n' +
+      '  Make a project folder first, then run this inside it.'
+    );
+  }
+  return null;
 }
 
 /**
@@ -136,11 +162,11 @@ async function wizardFlow() {
   stdout.write('kracked-core — set up memory for your AI coding agent\n\n');
 
   // 1. Agent name
-  const agentName = (await input('What should we call your agent?', 'KC')) || 'KC';
+  const agentName = sanitizeScanned(await input('What should we call your agent?', 'KC'), 40) || 'KC';
 
   // 2. User name
   const systemUser = os.userInfo().username || 'you';
-  const userName = (await input('Your name?', systemUser)) || systemUser;
+  const userName = sanitizeScanned(await input('Your name?', systemUser), 40) || systemUser;
 
   // 3. Global memory — always installed. It holds identity, preferences and
   // cross-project lessons, and boot depends on it; making it optional only
@@ -164,6 +190,35 @@ async function wizardFlow() {
     const pathAnswer = await input('Project directory?', '.');
     const expanded = expandTilde(pathAnswer);
     projectDir = path.resolve(expanded === '' ? '.' : expanded);
+
+    const unsafe = rejectUnsafeProjectDir(projectDir);
+    if (unsafe) {
+      stdout.write(`\n  ${unsafe}\n\nStopped — nothing was written.\n`);
+      process.exitCode = 1;
+      return;
+    }
+
+    // Already installed here? 27 individual conflict prompts is not a sane
+    // default — offer the three real intents up front instead.
+    if (fs.existsSync(path.join(projectDir, '.kracked'))) {
+      stdout.write('\n  kracked-core is already set up in this project.\n\n');
+      const action = await select('What would you like to do?', [
+        { label: 'Refresh package files', value: 'refresh', hint: 'skills + loaders, keeps all your memory' },
+        { label: 'Reinstall everything', value: 'reinstall', hint: 'asks per file before replacing' },
+        { label: 'Cancel', value: 'cancel' },
+      ], 0);
+
+      if (action === 'cancel') {
+        stdout.write('\nCancelled — nothing changed.\n');
+        return;
+      }
+      if (action === 'refresh') {
+        const { runUpdate } = await import('./update.mjs');
+        process.chdir(projectDir);
+        await runUpdate();
+        return;
+      }
+    }
 
     // Another agent system already here? Ask before touching its loaders.
     if (fs.existsSync(projectDir)) {
@@ -205,7 +260,7 @@ async function wizardFlow() {
         const confirmed = await confirm('Does this look right?', true);
         if (!confirmed) {
           const manualStack = await input('Describe the stack yourself:', stackLine);
-          stackLine = manualStack;
+          stackLine = sanitizeScanned(manualStack, 80) || stackLine;
         }
       }
     }
@@ -266,7 +321,7 @@ async function wizardFlow() {
 
   if (setUpProject) {
     await writeProjectMemory({ projectDir, tokens, ask: conflictAsk, report: reporter });
-    await writeLoaders({ projectDir, tokens, ask: conflictAsk, report: reporter });
+    await writeLoaders({ projectDir, tokens, ask: conflictAsk, report: reporter, editors });
     await writeSkills({ projectDir, tokens, editors, ask: conflictAsk, report: reporter });
   }
 

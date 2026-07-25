@@ -49,7 +49,11 @@ npx kracked-core init
 
 The wizard asks a few questions — name your agent, is this a new or existing project, which editor you use — and writes the files. Hold Enter through it and you'll get a sane setup.
 
-**Works with:** Antigravity · Claude Code · Cursor · Windsurf · anything that reads `AGENTS.md`
+**Full support** (memory + all five commands): **Antigravity** · **Claude Code**
+
+**Memory only:** Cursor, Windsurf, and anything else that reads `AGENTS.md` — your agent loads its
+memory, but the `/kracked-*` commands aren't installed, because those editors use a different
+skill format. You can still run the flow by asking in plain language.
 
 ## Use
 
@@ -129,6 +133,19 @@ Then it tracks the work:
 
 **A story cannot move to `done` without evidence.** Not "the tests pass" — what did you actually verify, and what did you *not*? Green tests are not a working feature. This one rule catches more bugs than any other part of the system.
 
+## Updating
+
+When a new version ships:
+
+```bash
+npx kracked-core@latest update
+```
+
+Refreshes the skills and loaders. **Your memory is never touched** — identity, preferences,
+lessons, and everything under `.kracked/` stay exactly as they are. It keeps your agent's name too.
+
+Restart your editor afterwards so it picks up the new skills.
+
 ## Uninstalling
 
 ```bash
@@ -138,7 +155,7 @@ npx kracked-core uninstall
 Shows what it will remove and asks before deleting — project files and global memory are separate
 questions. It never touches a `CLAUDE.md` or `AGENTS.md` another tool wrote.
 
-Full guide, including manual removal and how to keep your docs: [docs/UNINSTALL.md](./docs/UNINSTALL.md)
+Full guide, including manual removal and how to keep your docs: [docs/UNINSTALL.md](https://github.com/Krackeddevs-Org/kracked-core/blob/main/docs/UNINSTALL.md)
 
 ## FAQ
 

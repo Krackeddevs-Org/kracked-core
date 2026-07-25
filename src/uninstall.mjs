@@ -10,20 +10,23 @@ import os from 'node:os';
 import { stdout } from 'node:process';
 
 import { select, confirm } from './prompt.mjs';
-
-const SKILL_NAMES = [
-  'kracked-boot',
-  'kracked-sdd',
-  'kracked-wrap',
-  'kracked-explain',
-  'kracked-identity',
-];
+import { OWNED_MARKER, SKILL_NAMES } from './scaffold.mjs';
 
 const dim = (s) => `\x1b[2m${s}\x1b[0m`;
 const bold = (s) => `\x1b[1m${s}\x1b[0m`;
 
-/** Files/dirs the installer writes into a project. */
+/**
+ * Files/dirs the installer writes into a project.
+ *
+ * CRITICAL: when the "project" IS the home directory, `<project>/.kracked` and
+ * `~/.kracked` are the same folder — so listing it as a project target would
+ * delete the user's entire global memory behind the mild "Remove these project
+ * files?" prompt, never reaching the two-step global confirmation below.
+ * Global memory is only ever removable via the global layer.
+ */
 function projectTargets(projectDir) {
+  const globalDir = path.resolve(path.join(os.homedir(), '.kracked'));
+
   const targets = [
     { path: path.join(projectDir, '.kracked'), label: '.kracked/', kind: 'dir' },
     { path: path.join(projectDir, 'AGENTS.md'), label: 'AGENTS.md', kind: 'file' },
@@ -34,6 +37,16 @@ function projectTargets(projectDir) {
       kind: 'file',
     },
   ];
+
+  // "Write alongside" during init creates these; nothing else knew about them,
+  // so they were orphaned forever.
+  for (const base of ['AGENTS.md', 'CLAUDE.md']) {
+    targets.push({
+      path: path.join(projectDir, `${base}.kracked-new`),
+      label: `${base}.kracked-new`,
+      kind: 'file',
+    });
+  }
 
   for (const skill of SKILL_NAMES) {
     targets.push({
@@ -48,7 +61,12 @@ function projectTargets(projectDir) {
     });
   }
 
-  return targets.filter((t) => fs.existsSync(t.path));
+  return targets.filter((t) => {
+    if (!fs.existsSync(t.path)) return false;
+    // Never let a project target resolve onto global memory.
+    if (path.resolve(t.path) === globalDir) return false;
+    return true;
+  });
 }
 
 /**
@@ -56,17 +74,26 @@ function projectTargets(projectDir) {
  * AGENTS.md and CLAUDE.md are conventions other tools use too, so their
  * contents decide ownership. Everything else lives at a kracked-core-specific
  * path (.kracked/, kracked.md, skills/kracked-*) and is ours by definition.
- *
- * Checking content for OUR files was wrong: the Antigravity pointer never
- * names kracked-core in its body, so it read as foreign and survived uninstall.
  */
 function isOurs(filePath) {
   const base = path.basename(filePath);
   if (base !== 'AGENTS.md' && base !== 'CLAUDE.md') return true;
 
   try {
+    // Require the sentinel the installer writes. Anything else — including a
+    // file that merely MENTIONS kracked-core, or another tool using the shared
+    // `@AGENTS.md` import convention — is someone else's and must survive.
+    // Fail closed: an orphaned file is recoverable, a deleted one is not.
     const body = fs.readFileSync(filePath, 'utf8');
-    return /@AGENTS\.md|kracked-core|\.kracked\/|kracked-boot/.test(body);
+    if (body.includes(OWNED_MARKER)) return true;
+
+    // Pre-sentinel installs (<=1.2.0) have no marker. Recognise their exact
+    // generated shape so an upgrade path doesn't orphan loaders forever.
+    // Deliberately narrow: a bare `@AGENTS.md` (a shared convention other tools
+    // use) is NOT enough on its own.
+    const legacyClaude = /^@AGENTS\.md\s*\n[\s\S]*canonical instructions live in `AGENTS\.md`/.test(body);
+    const legacyAgents = /^# AGENTS\.md — [\s\S]*This is the canonical loader[\s\S]*kracked-boot/.test(body);
+    return legacyClaude || legacyAgents;
   } catch {
     return false; // unreadable — leave it alone rather than risk deleting someone else's
   }

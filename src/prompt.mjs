@@ -27,6 +27,24 @@ function setCursor(visible) {
   stdout.write(visible ? `${ESC}[?25h` : `${ESC}[?25l`);
 }
 
+// A throw anywhere outside the keypress handler would otherwise exit with the
+// terminal still in raw mode and the cursor hidden — leaving the user's shell
+// with invisible, unechoed input. One idempotent restore covers every exit path,
+// including process.exit().
+let restoreRegistered = false;
+function registerTerminalRestore() {
+  if (restoreRegistered) return;
+  restoreRegistered = true;
+  process.on('exit', () => {
+    try {
+      if (stdin.isTTY && stdin.isRaw) stdin.setRawMode(false);
+      stdout.write(`${ESC}[?25h`);
+    } catch {
+      // Nothing useful to do while the process is already exiting.
+    }
+  });
+}
+
 /** Move up n lines and clear from there down — used to redraw the menu in place. */
 function clearLines(n) {
   if (n > 0) stdout.write(`${ESC}[${n}A`);
@@ -34,25 +52,87 @@ function clearLines(n) {
 }
 
 /**
+ * Split one stdin chunk into individual keys.
+ *
+ * stdin delivers DATA, not keystrokes: holding Enter (key auto-repeat), typing
+ * fast, pasting, or running over SSH/tmux routinely packs several keys into one
+ * chunk. Comparing a whole chunk against '\r' then matches nothing, so the key
+ * is silently dropped and the prompt hangs — the worst kind of failure, because
+ * there is no error to see. Escape sequences (arrows) must stay intact as one
+ * key; everything else is per-character.
+ */
+function splitKeys(chunk) {
+  const keys = [];
+  let i = 0;
+
+  while (i < chunk.length) {
+    if (chunk[i] === ESC) {
+      // CSI sequence: ESC [ ... final-byte (@ through ~). Arrows are ESC[A..D.
+      const match = /^\x1b\[[0-9;?]*[ -/]*[@-~]/.exec(chunk.slice(i));
+      if (match) {
+        keys.push(match[0]);
+        i += match[0].length;
+        continue;
+      }
+      // ESC alone, or an unrecognised sequence — take just the ESC.
+      keys.push(chunk[i]);
+      i += 1;
+      continue;
+    }
+    keys.push(chunk[i]);
+    i += 1;
+  }
+
+  return keys;
+}
+
+/**
  * Read single keypresses until `onKey` signals completion.
  * onKey(key) returns { done: true, value } to finish, or falsy to keep listening.
  */
+// Keys that arrive between prompts — while one question has resolved and the
+// next hasn't attached its listener yet — would otherwise be dropped on the
+// floor. Holding Enter produces exactly that. Buffer them and replay into the
+// next prompt so no keystroke is ever silently lost.
+const pendingKeys = [];
+
+/**
+ * Start capturing keystrokes immediately, before the first prompt renders.
+ * Node takes a moment to boot and draw; anything typed in that window is
+ * otherwise lost. Call once at CLI start.
+ */
+export function beginTypeAhead() {
+  if (!stdin.isTTY) return;
+  registerTerminalRestore();
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding('utf8');
+  stdin.on('data', bufferEarlyKeys);
+}
+
+function bufferEarlyKeys(chunk) {
+  pendingKeys.push(...splitKeys(chunk));
+}
+
 function readKeys(onKey) {
   return new Promise((resolve, reject) => {
+    registerTerminalRestore();
     const wasRaw = stdin.isRaw;
     stdin.setRawMode(true);
     stdin.resume();
     stdin.setEncoding('utf8');
+    stdin.removeListener('data', bufferEarlyKeys);
 
     const cleanup = () => {
       stdin.setRawMode(wasRaw ?? false);
-      stdin.pause();
       stdin.removeListener('data', handler);
+      // Resume early-capture so keys typed between prompts aren't lost.
+      stdin.on('data', bufferEarlyKeys);
       setCursor(true);
     };
 
-    function handler(key) {
-      // Ctrl+C / Ctrl+D must always escape, whatever the prompt is doing.
+    /** Feed one key to onKey. Returns true when the prompt is finished. */
+    const dispatch = (key) => {
       if (key === KEY.ctrlC || key === KEY.ctrlD) {
         cleanup();
         stdout.write('\n\nCancelled — nothing was written.\n');
@@ -65,12 +145,32 @@ function readKeys(onKey) {
       } catch (err) {
         cleanup();
         reject(err);
-        return;
+        return true;
       }
 
       if (result && result.done) {
         cleanup();
         resolve(result.value);
+        return true;
+      }
+      return false;
+    };
+
+    // Replay anything typed ahead of this prompt before listening for more.
+    while (pendingKeys.length) {
+      if (dispatch(pendingKeys.shift())) return;
+    }
+
+    function handler(chunk) {
+      // One chunk can carry several keys. Dispatch them one at a time; once a
+      // key completes this prompt, park the rest for the next one rather than
+      // discarding them.
+      const keys = splitKeys(chunk);
+      for (let i = 0; i < keys.length; i++) {
+        if (dispatch(keys[i])) {
+          pendingKeys.push(...keys.slice(i + 1));
+          return;
+        }
       }
     }
 
@@ -210,8 +310,12 @@ export async function input(question, defaultValue = '') {
       render();
       return null;
     }
-    // Ignore escape sequences (arrows etc.) and other control chars.
-    if (key.startsWith(ESC) || key < ' ') return null;
+    // Ignore escape sequences (arrows etc.) and any control character. Compare
+    // the code point, not the string — `key < ' '` on a multi-char value tests
+    // lexicographic order, not "is this a control char".
+    if (key.startsWith(ESC)) return null;
+    const code = key.codePointAt(0);
+    if (code < 0x20 || code === 0x7f) return null;
 
     buffer += key;
     render();

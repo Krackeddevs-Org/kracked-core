@@ -1,3 +1,4 @@
+<!-- kracked-core:owned -->
 # Antigravity — {{PROJECT_NAME}}
 
 This file is a pointer, not the source of truth. The full instructions — who the agent is, the

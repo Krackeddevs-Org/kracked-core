@@ -1,3 +1,4 @@
+<!-- kracked-core:owned -->
 # AGENTS.md — {{PROJECT_NAME}}
 
 This is the canonical loader. Every harness (Antigravity, Claude Code, others) reads this file
