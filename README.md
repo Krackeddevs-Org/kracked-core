@@ -82,7 +82,13 @@ your-project/.kracked/   PROJECT — this codebase only
   project.md             stack, conventions, how to run it
   session.md             where we are right now
   decisions.md           why things are the way they are
-  sdd/tracker.md         story status + evidence
+  sdd/
+    tracker.md           story status + evidence
+    specs/               what to build and why
+    epics/               groups of related stories
+    stories/             one shippable slice each
+    architecture/        how it's built (large work only)
+      decisions/         ADRs, numbered, never renumbered
 ```
 
 ### The boundary rule
@@ -122,6 +128,17 @@ Then it tracks the work:
 | 1.3 | Remember me | backlog | — |
 
 **A story cannot move to `done` without evidence.** Not "the tests pass" — what did you actually verify, and what did you *not*? Green tests are not a working feature. This one rule catches more bugs than any other part of the system.
+
+## Uninstalling
+
+```bash
+npx kracked-core uninstall
+```
+
+Shows what it will remove and asks before deleting — project files and global memory are separate
+questions. It never touches a `CLAUDE.md` or `AGENTS.md` another tool wrote.
+
+Full guide, including manual removal and how to keep your docs: [docs/UNINSTALL.md](./docs/UNINSTALL.md)
 
 ## FAQ
 

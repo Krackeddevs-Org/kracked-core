@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 
 import { runInit } from '../src/wizard.mjs';
+import { runUninstall } from '../src/uninstall.mjs';
 
 const USAGE = `kracked-core — memory & workflow installer for AI coding agents
 
 Usage:
-  npx kracked-core init     Set up global + project memory
+  npx kracked-core init        Set up global + project memory
+  npx kracked-core uninstall   Remove kracked-core files (asks before deleting)
 
 Options:
-  -h, --help                 Show this help
+  -h, --help                    Show this help
 `;
 
 async function main() {
@@ -16,6 +18,11 @@ async function main() {
 
   if (subcommand === 'init') {
     await runInit();
+    return;
+  }
+
+  if (subcommand === 'uninstall') {
+    await runUninstall();
     return;
   }
 

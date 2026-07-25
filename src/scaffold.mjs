@@ -148,16 +148,22 @@ export async function writeProjectMemory({ projectDir, tokens, ask, report }) {
     await writeFileWithConflictCheck(destPath, content, ask, report);
   }
 
-  // sdd/tracker.md + sdd/specs/.gitkeep
-  const trackerDest = path.join(krackedDir, 'sdd', 'tracker.md');
-  const trackerContent = applyTokens(readTemplate('project/sdd/tracker.md'), tokens);
-  await writeFileWithConflictCheck(trackerDest, trackerContent, ask, report);
+  // SDD docs: tracker + the artifact folders, each with a template that
+  // explains what belongs there. An empty folder teaches nothing.
+  const sddDocs = [
+    'sdd/tracker.md',
+    'sdd/README.md',
+    'sdd/specs/_TEMPLATE.md',
+    'sdd/epics/_TEMPLATE.md',
+    'sdd/stories/_TEMPLATE.md',
+    'sdd/architecture/_TEMPLATE.md',
+    'sdd/architecture/decisions/_TEMPLATE.md',
+  ];
 
-  const gitkeepDest = path.join(krackedDir, 'sdd', 'specs', '.gitkeep');
-  if (!fs.existsSync(gitkeepDest)) {
-    fs.mkdirSync(path.dirname(gitkeepDest), { recursive: true });
-    fs.writeFileSync(gitkeepDest, '', 'utf8');
-    report({ path: gitkeepDest, action: 'written' });
+  for (const rel of sddDocs) {
+    const destPath = path.join(krackedDir, rel);
+    const content = applyTokens(readTemplate(`project/${rel}`), tokens);
+    await writeFileWithConflictCheck(destPath, content, ask, report);
   }
 }
 

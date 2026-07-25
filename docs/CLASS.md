@@ -83,6 +83,7 @@ Lives in the repo. **This project only.**
 | `session.md` | Where we are right now |
 | `decisions.md` | Why things are the way they are |
 | `sdd/tracker.md` | Story status + evidence |
+| `sdd/specs/` `epics/` `stories/` `architecture/` | Your design docs |
 
 ### ⚠️ The boundary rule — get this right
 
@@ -213,6 +214,7 @@ npx kracked-core init     install
 | Claude Code doesn't see it | Check `CLAUDE.md` exists — it should contain `@AGENTS.md` |
 | Agent forgot everything | Did you run `/kracked-wrap` last session? |
 | Wrong info in memory | **Just edit the file.** It's markdown. Faster than arguing |
+| Want to remove it all | `npx kracked-core uninstall` — asks before deleting anything |
 
 ---
 
