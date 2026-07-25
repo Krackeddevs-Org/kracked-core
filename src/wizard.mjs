@@ -291,7 +291,25 @@ async function wizardFlow() {
       checked: !claudeTaken,
       hint: claudeTaken ? 'CLAUDE.md already in use here' : 'writes CLAUDE.md + .claude/',
     },
+    {
+      label: 'Kilo Code (VS Code)',
+      value: 'kilo',
+      checked: false,
+      hint: 'reads AGENTS.md + .agents/skills; adds kilo.jsonc',
+    },
+    {
+      label: 'Roo Code (VS Code)',
+      value: 'roo',
+      checked: false,
+      hint: 'reads AGENTS.md + .agents/skills; adds .roo/rules',
+    },
   ]);
+
+  // Kilo and Roo both read AGENTS.md and .agents/skills/ natively, so picking
+  // either implies the shared .agents/ footprint.
+  if ((editors.includes('kilo') || editors.includes('roo')) && !editors.includes('antigravity')) {
+    editors.push('antigravity');
+  }
 
   // 6. Write files
   const projectName = projectSummary?.name || (setUpProject ? path.basename(projectDir) : 'unnamed-project');

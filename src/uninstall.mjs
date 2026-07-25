@@ -38,6 +38,14 @@ function projectTargets(projectDir) {
     },
   ];
 
+  // Roo's rules mirror. kilo.jsonc is deliberately NOT listed — it may hold the
+  // user's own settings, so removing it wholesale would destroy their config.
+  targets.push({
+    path: path.join(projectDir, '.roo', 'rules', 'kracked.md'),
+    label: '.roo/rules/kracked.md',
+    kind: 'file',
+  });
+
   // "Write alongside" during init creates these; nothing else knew about them,
   // so they were orphaned forever.
   for (const base of ['AGENTS.md', 'CLAUDE.md']) {
@@ -113,6 +121,8 @@ function pruneEmptyParents(projectDir) {
     path.join(projectDir, '.claude', 'skills'),
     path.join(projectDir, '.claude'),
     path.join(projectDir, '.agents', 'rules'),
+    path.join(projectDir, '.roo', 'rules'),
+    path.join(projectDir, '.roo'),
     path.join(projectDir, '.agents', 'skills'),
     path.join(projectDir, '.agents'),
   ];

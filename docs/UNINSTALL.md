@@ -27,7 +27,12 @@ CLAUDE.md                     the Claude Code shim
 .agents/rules/kracked.md      the Antigravity pointer
 .claude/skills/kracked-*/     5 skills
 .agents/skills/kracked-*/     5 skills
+.roo/rules/kracked.md         Roo Code pointer (if installed)
 ```
+
+**Not removed:** `kilo.jsonc`, if you selected Kilo Code. That file may hold your own
+settings, so uninstall leaves it alone — delete the `.agents/rules/kracked.md` line from its
+`instructions` array by hand.
 
 Empty `.claude/` and `.agents/` folders are cleaned up afterwards. If you keep other things in
 them, they stay.

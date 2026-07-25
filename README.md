@@ -49,7 +49,8 @@ npx kracked-core init
 
 The wizard asks a few questions — name your agent, is this a new or existing project, which editor you use — and writes the files. Hold Enter through it and you'll get a sane setup.
 
-**Full support** (memory + all five commands): **Antigravity** · **Claude Code**
+**Full support** (memory + all five commands):
+**Antigravity** · **Claude Code** · **Kilo Code** (VS Code) · **Roo Code** (VS Code)
 
 **Memory only:** Cursor, Windsurf, and anything else that reads `AGENTS.md` — your agent loads its
 memory, but the `/kracked-*` commands aren't installed, because those editors use a different

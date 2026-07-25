@@ -7,9 +7,9 @@
 ## Before we start
 
 You need:
-- An editor with an AI agent — **Antigravity** or **Claude Code**
-  *(Cursor and Windsurf load the memory but don't get the `/kracked-*` commands — bring one of
-  the two above if you can.)*
+- An editor with an AI agent — any of:
+  **Antigravity** · **Claude Code** · **Kilo Code** or **Roo Code** (both VS Code extensions)
+  *(Cursor and Windsurf load the memory but don't get the `/kracked-*` commands.)*
 - **Node 18+** — check with `node --version`
 - A project folder (new or existing, both work)
 

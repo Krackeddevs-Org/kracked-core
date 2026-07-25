@@ -182,6 +182,24 @@ export async function writeLoaders({ projectDir, tokens, ask, report, editors })
   const claudeContent = applyTokens(readTemplate('loaders/CLAUDE.md'), tokens);
   await writeFileWithConflictCheck(path.join(projectDir, 'CLAUDE.md'), claudeContent, ask, report);
 
+  // Roo reads .roo/rules/ only — it does NOT read .agents/rules/, so without
+  // this mirror the pointer is invisible to Roo.
+  if (editors && editors.includes('roo')) {
+    const rooRules = applyTokens(readTemplate('loaders/antigravity-rules.md'), tokens);
+    await writeFileWithConflictCheck(
+      path.join(projectDir, '.roo', 'rules', 'kracked.md'),
+      rooRules,
+      ask,
+      report
+    );
+  }
+
+  // Kilo only loads a rules file if it's declared in kilo.jsonc's `instructions`
+  // array. Merge into an existing config rather than clobbering the user's.
+  if (editors && editors.includes('kilo')) {
+    await writeKiloConfig({ projectDir, report });
+  }
+
   // Only write the Antigravity pointer when Antigravity is actually in use —
   // `update` was creating .agents/ in Claude-only projects.
   if (!editors || editors.includes('antigravity')) {
@@ -212,4 +230,42 @@ export async function writeSkills({ projectDir, tokens, editors, ask, report }) 
       await writeFileWithConflictCheck(destPath, content, ask, report);
     }
   }
+}
+
+/**
+ * Add our rules file to kilo.jsonc's `instructions` array. Kilo does not
+ * auto-load `.kilo/rules/` — a file is only read if it's listed here, so
+ * without this the pointer is silently ignored.
+ * Merges into an existing config; never overwrites the user's settings.
+ */
+async function writeKiloConfig({ projectDir, report }) {
+  const configPath = path.join(projectDir, 'kilo.jsonc');
+  const entry = '.agents/rules/kracked.md';
+
+  if (fs.existsSync(configPath)) {
+    const body = fs.readFileSync(configPath, 'utf8');
+    if (body.includes(entry)) {
+      report({ path: configPath, action: 'already configured' });
+      return;
+    }
+    // Append to the existing instructions array if there is one, else add it.
+    let updated;
+    if (/"instructions"\s*:\s*\[/.test(body)) {
+      updated = body.replace(/("instructions"\s*:\s*\[)/, `$1\n    "${entry}",`);
+    } else {
+      updated = body.replace(/^\s*\{/, `{\n  "instructions": ["${entry}"],`);
+    }
+    fs.writeFileSync(configPath, updated, 'utf8');
+    report({ path: configPath, action: 'updated (added instructions entry)' });
+    return;
+  }
+
+  const fresh = `{
+  // Kilo reads AGENTS.md automatically. This entry additionally loads the
+  // kracked-core rules pointer. Add your own settings alongside it.
+  "instructions": ["${entry}"]
+}
+`;
+  fs.writeFileSync(configPath, fresh, 'utf8');
+  report({ path: configPath, action: 'written' });
 }
