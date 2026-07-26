@@ -89,9 +89,19 @@ export async function runStatus() {
     stdout.write(`  ${present.length}/${files.length} files present\n`);
 
     // Lesson count is the signal that memory is actually accumulating.
+    // Skip fenced blocks — the "## Format" section documents the shape with a
+    // `- [YYYY-MM-DD] <project>` placeholder, and counting it reported
+    // "lessons learned: 1" on a fresh install with no lessons at all.
     try {
       const lessons = fs.readFileSync(path.join(globalDir, 'lessons.md'), 'utf8');
-      const count = lessons.split('\n').filter((l) => /^- /.test(l)).length;
+      let inFence = false;
+      const count = lessons.split('\n').filter((l) => {
+        if (/^```/.test(l)) {
+          inFence = !inFence;
+          return false;
+        }
+        return !inFence && /^- /.test(l);
+      }).length;
       stdout.write(`  lessons learned: ${count}\n`);
     } catch {
       // No lessons file — already reflected in the count above.
