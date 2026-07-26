@@ -84,13 +84,79 @@ async function writeFileWithConflictCheck(destPath, content, ask, report) {
  * Drop the illustrative example entries from a freshly-written memory file.
  * They exist to show the format, but left in place they sit alongside the
  * user's real lessons forever and make the index untrustworthy.
+ *
+ * Two things this has to get right, both learned the hard way:
+ *
+ * 1. Fenced blocks are FORMAT DOCUMENTATION, not examples. The placeholder
+ *    line inside a ``` fence (`- [YYYY-MM-DD] <project> — ...`) teaches the
+ *    shape and must survive; stripping it left an empty fence behind.
+ * 2. An example is not always a list row. The archive's entries are `##`
+ *    headings followed by prose, so a line-shaped filter never saw them and
+ *    a fictional todo-app lesson shipped into real memory.
  */
 function stripExamples(content) {
-  return content
-    .split('\n')
-    .filter((line) => !/^[-|]\s*\[?(YYYY-MM-DD|\d{4}-\d{2}-\d{2})\]?\s*(todo-app|my-blog|<project>)/.test(line))
-    .filter((line) => !/^\|\s*(todo-app|my-blog)\s*\|/.test(line))
-    .join('\n');
+  const lines = content.split('\n');
+  const out = [];
+  let inFence = false;
+  let skippingEntry = false;
+
+  // Match the SHIPPED examples by their exact date+project pair, never by
+  // project name alone. A user whose repo is genuinely called todo-app or
+  // my-blog must keep every real lesson they write about it — a name-shaped
+  // filter would silently delete their memory.
+  const SHIPPED = [
+    /^\[?2026-01-15\]?\s*todo-app\s*—/,
+    /^\[?2026-02-03\]?\s*my-blog\s*—/,
+  ];
+  const isShipped = (text) => SHIPPED.some((re) => re.test(text.trim()));
+
+  const isExampleLine = (line) => {
+    const m = line.match(/^[-*]\s*(.+)$/);
+    if (m) return isShipped(m[1]);
+    const cell = line.match(/^\|\s*(todo-app|my-blog)\s*\|/);
+    return Boolean(cell);
+  };
+
+  // An archive entry is a `## [date] project — title` heading; it owns every
+  // line until the next heading.
+  const isExampleHeading = (line) => {
+    const m = line.match(/^#{2,3}\s+(.+)$/);
+    return Boolean(m) && isShipped(m[1]);
+  };
+
+  for (const line of lines) {
+    if (/^```/.test(line)) {
+      inFence = !inFence;
+      skippingEntry = false;
+      out.push(line);
+      continue;
+    }
+
+    // Inside a fence everything is documentation — never strip.
+    if (inFence) {
+      out.push(line);
+      continue;
+    }
+
+    if (isExampleHeading(line)) {
+      skippingEntry = true;
+      continue;
+    }
+
+    // A new heading ends the example entry we were dropping.
+    if (skippingEntry) {
+      if (/^#{1,6}\s/.test(line)) skippingEntry = false;
+      else continue;
+    }
+
+    if (isExampleLine(line)) continue;
+
+    out.push(line);
+  }
+
+  // Collapse the run of blank lines a removed block leaves behind, and keep
+  // exactly one trailing newline.
+  return `${out.join('\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '')}\n`;
 }
 
 export async function writeGlobalMemory({ tokens, ask, report }) {
